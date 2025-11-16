@@ -21,6 +21,50 @@ A Go-based tool for scraping and downloading media (images, videos, and other fi
 
 ## Installation
 
+### Pre-built Binaries
+
+Download the latest release for your platform from the [Releases page](https://github.com/neo1908/lemmy-image-scraper/releases).
+
+**Linux (x86_64):**
+```bash
+wget https://github.com/neo1908/lemmy-image-scraper/releases/latest/download/lemmy-scraper_*_Linux_x86_64.tar.gz
+tar -xzf lemmy-scraper_*_Linux_x86_64.tar.gz
+./lemmy-scraper -config config.example.yaml
+```
+
+**macOS (Apple Silicon):**
+```bash
+wget https://github.com/neo1908/lemmy-image-scraper/releases/latest/download/lemmy-scraper_*_Darwin_arm64.tar.gz
+tar -xzf lemmy-scraper_*_Darwin_arm64.tar.gz
+./lemmy-scraper -config config.example.yaml
+```
+
+Each release includes:
+- The `lemmy-scraper` binary
+- `config.example.yaml` - Example configuration file
+- `README.md` - Documentation
+
+### Docker
+
+Run with Docker Compose (recommended):
+
+```bash
+git clone https://github.com/neo1908/lemmy-image-scraper.git
+cd lemmy-image-scraper
+mkdir -p config downloads
+cp config.docker.yaml config/config.yaml
+# Edit config/config.yaml with your credentials
+docker-compose up -d
+```
+
+Or use the pre-built image:
+
+```bash
+docker pull ghcr.io/neo1908/lemmy-image-scraper:latest
+```
+
+See [README.Docker.md](README.Docker.md) for detailed Docker deployment instructions.
+
 ### From Source
 
 ```bash

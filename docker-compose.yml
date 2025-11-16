@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  lemmy-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lemmy-scraper
+    restart: unless-stopped
+
+    # Mount volumes for config and downloads
+    volumes:
+      # Config directory - place your config.yaml here
+      - ./config:/config:ro
+      # Downloads directory - media will be saved here
+      - ./downloads:/downloads:rw
+
+    # Expose web UI port (if web_server.enabled: true in config)
+    ports:
+      - "8080:8080"
+
+    # Environment variables (optional)
+    environment:
+      - TZ=UTC
+      - CONFIG_PATH=/config/config.yaml
+
+    # Resource limits (optional - adjust as needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 1G
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 256M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "lemmy-scraper"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+# Optional: Create named volumes instead of bind mounts
+# volumes:
+#   config:
+#   downloads:

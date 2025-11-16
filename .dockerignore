@@ -1,0 +1,56 @@
+# Build artifacts
+lemmy-scraper
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+!CLAUDE.md
+
+# Example configs (use mounted config instead)
+config.example.yaml
+
+# Downloads directory (will be mounted)
+downloads/
+
+# Database (will be in mounted volume)
+*.db
+*.db-shm
+*.db-wal
+
+# Web node_modules (will be installed in build)
+web/node_modules/
+web/.svelte-kit/
+web/build/
+
+# Logs
+*.log

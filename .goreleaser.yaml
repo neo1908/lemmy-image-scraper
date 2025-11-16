@@ -1,0 +1,189 @@
+# GoReleaser configuration for Lemmy Image Scraper
+# Documentation: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    # Clean up before building
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: lemmy-scraper
+    main: ./cmd/scraper
+    binary: lemmy-scraper
+
+    env:
+      - CGO_ENABLED=0
+
+    # Build flags
+    flags:
+      - -trimpath
+
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+    # Target platforms
+    goos:
+      - linux
+      - darwin
+      - windows
+
+    goarch:
+      - amd64
+      - arm64
+      - 386
+
+    # Ignore specific combinations
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    format: tar.gz
+
+    # Use zip for Windows
+    format_overrides:
+      - goos: windows
+        format: zip
+
+    # Archive name template
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+    # Files to include in the archive
+    files:
+      - README.md
+      - README.Docker.md
+      - CLAUDE.md
+      - LICENSE*
+      - config.example.yaml
+      - config.docker.yaml
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - 'typo'
+      - 'Merge pull request'
+      - 'Merge branch'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+# GitHub release configuration
+release:
+  github:
+    owner: neo1908
+    name: lemmy-image-scraper
+
+  # Release name template
+  name_template: "v{{.Version}}"
+
+  # Whether to make the release as draft
+  draft: false
+
+  # Whether to mark as prerelease
+  prerelease: auto
+
+  # Release footer template
+  footer: |
+    ## Installation
+
+    Download the appropriate archive for your platform, extract it, and run the binary.
+
+    ### Quick Start
+
+    1. Extract the archive: `tar -xzf lemmy-scraper_*_Linux_x86_64.tar.gz`
+    2. Copy the example config: `cp config.example.yaml config.yaml`
+    3. Edit config with your credentials: `nano config.yaml`
+    4. Run the scraper: `./lemmy-scraper`
+
+    ### Docker
+
+    Alternatively, use Docker:
+    ```bash
+    docker pull ghcr.io/neo1908/lemmy-image-scraper:latest
+    ```
+
+    See [README.Docker.md](README.Docker.md) for detailed Docker instructions.
+
+    ---
+
+    **Full Changelog**: https://github.com/neo1908/lemmy-image-scraper/compare/{{.PreviousTag}}...{{.Tag}}
+
+# Docker image publishing (optional - requires Docker Hub or GHCR setup)
+dockers:
+  - image_templates:
+      - "ghcr.io/neo1908/lemmy-image-scraper:{{ .Version }}"
+      - "ghcr.io/neo1908/lemmy-image-scraper:latest"
+
+    dockerfile: Dockerfile
+
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+
+    # Skip Docker build if not in CI or if --skip-publish flag is set
+    skip_push: auto
+
+# Announce new releases (optional)
+# announce:
+#   slack:
+#     enabled: false
+#   discord:
+#     enabled: false
+
+# SBOM generation (Software Bill of Materials)
+sboms:
+  - artifacts: archive
+
+# Signing (optional - requires GPG key setup)
+# signs:
+#   - artifacts: checksum
+#     args:
+#       - "--batch"
+#       - "--local-user"
+#       - "{{ .Env.GPG_FINGERPRINT }}"
+#       - "--output"
+#       - "${signature}"
+#       - "--detach-sign"
+#       - "${artifact}"

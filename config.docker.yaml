@@ -1,0 +1,74 @@
+lemmy:
+  # The Lemmy instance to scrape (without https://)
+  instance: "lemmy.ml"
+
+  # Your Lemmy account credentials (required for authentication)
+  username: "your_username"
+  password: "your_password"
+
+  # List of communities to scrape (e.g., ["technology", "linux", "programming"])
+  # Leave empty [] to scrape from the instance's "hot" page
+  communities: []
+
+storage:
+  # Base directory where media will be saved
+  # In Docker, this maps to the /downloads volume
+  base_directory: "/downloads"
+
+database:
+  # Path to SQLite database file for tracking scraped media
+  # Stored in the /downloads volume to persist data
+  path: "/downloads/lemmy-scraper.db"
+
+scraper:
+  # Maximum number of posts to scrape per run (total across all pages)
+  # Note: Lemmy API maximum is 50 posts per request, but pagination can fetch more
+  max_posts_per_run: 50
+
+  # Idempotency settings - choose your strategy:
+
+  # Stop when encountering previously seen posts (default: true)
+  # Uses seen_posts_threshold to determine when to stop
+  stop_at_seen_posts: true
+
+  # Skip seen posts but continue scraping (default: false)
+  # Useful for non-chronological sorts like "TopWeek"
+  skip_seen_posts: false
+
+  # Number of consecutive seen posts before stopping (default: 5)
+  # Only used when stop_at_seen_posts is true
+  seen_posts_threshold: 5
+
+  # Enable pagination to fetch more than 50 posts (default: false)
+  # When enabled, makes multiple API requests to get up to max_posts_per_run
+  enable_pagination: false
+
+  # Sort type: "Hot", "New", "TopDay", "TopWeek", "TopMonth", "TopYear", "TopAll", "Active"
+  sort_type: "Hot"
+
+  # Media types to download
+  include_images: true
+  include_videos: true
+  include_other_media: true
+
+run_mode:
+  # Run mode: "once" (run once and exit) or "continuous" (run on interval)
+  # For Docker, "continuous" mode is recommended with restart: unless-stopped
+  mode: "continuous"
+
+  # Interval for continuous mode (e.g., "5m", "1h", "30m")
+  # Only used when mode is "continuous"
+  interval: "30m"
+
+web_server:
+  # Enable the web UI for browsing downloaded media (default: false)
+  # Recommended to enable for Docker deployments
+  enabled: true
+
+  # Host to bind the web server to (default: "localhost")
+  # Use "0.0.0.0" in Docker to allow access from outside the container
+  host: "0.0.0.0"
+
+  # Port for the web server (default: 8080)
+  # Must match the EXPOSE directive in Dockerfile and ports mapping in docker-compose.yml
+  port: 8080
