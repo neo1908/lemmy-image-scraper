@@ -165,6 +165,53 @@ func (c *Client) GetCommunityID(communityName string) (int64, error) {
 	return communityResp.CommunityView.Community.ID, nil
 }
 
+// GetComments retrieves comments for a post from the Lemmy instance
+func (c *Client) GetComments(postID int64, maxDepth, limit int) (*models.GetCommentsResponse, error) {
+	queryParams := url.Values{}
+	queryParams.Set("post_id", fmt.Sprintf("%d", postID))
+
+	if maxDepth > 0 {
+		queryParams.Set("max_depth", fmt.Sprintf("%d", maxDepth))
+	}
+	if limit > 0 {
+		queryParams.Set("limit", fmt.Sprintf("%d", limit))
+	}
+	queryParams.Set("sort", "Top") // Get best comments first
+
+	reqURL := fmt.Sprintf("%s/comment/list?%s", c.BaseURL, queryParams.Encode())
+
+	log.Debugf("Requesting comments URL: %s", reqURL)
+
+	req, err := http.NewRequest("GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add Authorization header with Bearer token if authenticated
+	if c.AuthToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.AuthToken))
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var commentsResp models.GetCommentsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&commentsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	log.Debugf("Retrieved %d comments from API", len(commentsResp.Comments))
+	return &commentsResp, nil
+}
+
 // GetPostsParams represents parameters for getting posts
 type GetPostsParams struct {
 	Sort          string // Hot, New, TopDay, etc.

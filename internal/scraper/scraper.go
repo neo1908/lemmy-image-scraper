@@ -90,12 +90,12 @@ func (s *Scraper) scrapeWithPagination(source string, baseParams api.GetPostsPar
 
 		log.Debugf("Fetching page %d with limit %d", page, params.Limit)
 
-		downloaded, skipped, errors, seenInRow, shouldStop := s.scrapePosts(params, source, consecutiveSeenPosts)
+		downloaded, skipped, errors, postsReturned, seenInRow, shouldStop := s.scrapePosts(params, source, consecutiveSeenPosts)
 
 		totalDownloaded += downloaded
 		totalSkipped += skipped
 		totalErrors += errors
-		totalProcessed += downloaded + skipped
+		totalProcessed += postsReturned
 
 		consecutiveSeenPosts = seenInRow
 
@@ -106,8 +106,8 @@ func (s *Scraper) scrapeWithPagination(source string, baseParams api.GetPostsPar
 		}
 
 		// If we got fewer posts than requested, we've reached the end
-		if downloaded+skipped < params.Limit {
-			log.Debugf("Received fewer posts than requested, reached end of available posts")
+		if postsReturned < params.Limit {
+			log.Debugf("Received fewer posts than requested (%d < %d), reached end of available posts", postsReturned, params.Limit)
 			break
 		}
 
@@ -134,15 +134,16 @@ func min(a, b int) int {
 }
 
 // scrapePosts fetches and processes posts based on the given parameters
-// Returns: downloaded, skipped, errors, consecutiveSeenPosts, shouldStop
-func (s *Scraper) scrapePosts(params api.GetPostsParams, source string, currentConsecutiveSeen int) (int, int, int, int, bool) {
+// Returns: downloaded, skipped, errors, postsReturned, consecutiveSeenPosts, shouldStop
+func (s *Scraper) scrapePosts(params api.GetPostsParams, source string, currentConsecutiveSeen int) (int, int, int, int, int, bool) {
 	postsResp, err := s.API.GetPosts(params)
 	if err != nil {
 		log.Errorf("Failed to get posts: %v", err)
-		return 0, 0, 1, currentConsecutiveSeen, true
+		return 0, 0, 1, 0, currentConsecutiveSeen, true
 	}
 
-	log.Debugf("Retrieved %d posts from %s (page %d)", len(postsResp.Posts), source, params.Page)
+	postsReturned := len(postsResp.Posts)
+	log.Debugf("Retrieved %d posts from %s (page %d)", postsReturned, source, params.Page)
 
 	downloaded := 0
 	skipped := 0
@@ -165,7 +166,7 @@ func (s *Scraper) scrapePosts(params api.GetPostsParams, source string, currentC
 				if consecutiveSeenPosts >= s.Config.Scraper.SeenPostsThreshold {
 					log.Infof("Encountered %d previously seen posts in a row (threshold: %d), stopping",
 						consecutiveSeenPosts, s.Config.Scraper.SeenPostsThreshold)
-					return downloaded, skipped, errors, consecutiveSeenPosts, true
+					return downloaded, skipped, errors, postsReturned, consecutiveSeenPosts, true
 				}
 			}
 
@@ -222,9 +223,57 @@ func (s *Scraper) scrapePosts(params api.GetPostsParams, source string, currentC
 		if err := s.DB.MarkPostAsScraped(&postView, mediaDownloaded); err != nil {
 			log.Errorf("Failed to mark post %d as scraped: %v", postView.Post.ID, err)
 		}
+
+		// Fetch and store comments if the post had media
+		if mediaDownloaded > 0 {
+			s.scrapeComments(postView.Post.ID)
+		}
 	}
 
-	return downloaded, skipped, errors, consecutiveSeenPosts, false
+	return downloaded, skipped, errors, postsReturned, consecutiveSeenPosts, false
+}
+
+// scrapeComments fetches and stores comments for a post
+func (s *Scraper) scrapeComments(postID int64) {
+	// Check if we already have comments for this post
+	exists, err := s.DB.CommentsExistForPost(postID)
+	if err != nil {
+		log.Errorf("Failed to check if comments exist for post %d: %v", postID, err)
+		return
+	}
+	if exists {
+		log.Debugf("Comments already exist for post %d, skipping", postID)
+		return
+	}
+
+	// Fetch comments from API (max_depth=10, limit=500 to get most comments)
+	commentsResp, err := s.API.GetComments(postID, 10, 500)
+	if err != nil {
+		log.Errorf("Failed to fetch comments for post %d: %v", postID, err)
+		return
+	}
+
+	if len(commentsResp.Comments) == 0 {
+		log.Debugf("No comments found for post %d", postID)
+		return
+	}
+
+	// Save each comment to the database
+	savedCount := 0
+	for _, commentView := range commentsResp.Comments {
+		// Skip removed or deleted comments
+		if commentView.Comment.Removed || commentView.Comment.Deleted {
+			continue
+		}
+
+		if err := s.DB.SaveComment(&commentView); err != nil {
+			log.Errorf("Failed to save comment %d: %v", commentView.Comment.ID, err)
+			continue
+		}
+		savedCount++
+	}
+
+	log.Debugf("Saved %d/%d comments for post %d", savedCount, len(commentsResp.Comments), postID)
 }
 
 // extractMediaURLs extracts all media URLs from a post

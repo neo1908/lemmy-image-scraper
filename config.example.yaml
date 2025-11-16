@@ -57,3 +57,14 @@ run_mode:
   # Interval for continuous mode (e.g., "5m", "1h", "30m")
   # Only used when mode is "continuous"
   interval: "30m"
+
+web_server:
+  # Enable the web UI for browsing downloaded media (default: false)
+  enabled: false
+
+  # Host to bind the web server to (default: "localhost")
+  # Use "0.0.0.0" to allow external access
+  host: "localhost"
+
+  # Port for the web server (default: 8080)
+  port: 8080

@@ -13,6 +13,7 @@ import (
 	"github.com/neo1908/lemmy-image-scraper/internal/database"
 	"github.com/neo1908/lemmy-image-scraper/internal/downloader"
 	"github.com/neo1908/lemmy-image-scraper/internal/scraper"
+	"github.com/neo1908/lemmy-image-scraper/internal/web"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -84,22 +85,44 @@ func main() {
 	// Initialize scraper
 	s := scraper.New(cfg, apiClient, db, dl)
 
+	// Start web server if enabled
+	if cfg.WebServer.Enabled {
+		webServer := web.New(cfg, db)
+		go func() {
+			log.Infof("Web UI enabled at http://%s:%d", cfg.WebServer.Host, cfg.WebServer.Port)
+			if err := webServer.Start(); err != nil {
+				log.Errorf("Web server error: %v", err)
+			}
+		}()
+	}
+
 	// Run based on mode
 	if cfg.RunMode.Mode == "once" {
-		runOnce(s)
+		runOnce(s, cfg.WebServer.Enabled)
 	} else {
 		runContinuous(s, cfg.RunMode.Interval)
 	}
 }
 
-// runOnce runs the scraper once and exits
-func runOnce(s *scraper.Scraper) {
+// runOnce runs the scraper once and exits (unless web server is enabled)
+func runOnce(s *scraper.Scraper, webServerEnabled bool) {
 	log.Info("Running in one-time mode")
 	if err := s.Run(); err != nil {
 		log.Errorf("Scraper error: %v", err)
-		os.Exit(1)
+		if !webServerEnabled {
+			os.Exit(1)
+		}
 	}
 	log.Info("Scrape completed successfully")
+
+	// If web server is enabled, keep running
+	if webServerEnabled {
+		log.Info("Web server is running. Press Ctrl+C to exit.")
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		sig := <-sigChan
+		log.Infof("Received signal %v, shutting down gracefully", sig)
+	}
 }
 
 // runContinuous runs the scraper on an interval

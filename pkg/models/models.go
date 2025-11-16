@@ -122,3 +122,52 @@ type LoginResponse struct {
 	RegistrationCreated bool  `json:"registration_created"`
 	VerifyEmailSent    bool   `json:"verify_email_sent"`
 }
+
+// Comment represents a Lemmy comment from the API
+type Comment struct {
+	ID           int64     `json:"id"`
+	CreatorID    int64     `json:"creator_id"`
+	PostID       int64     `json:"post_id"`
+	Content      string    `json:"content"`
+	Removed      bool      `json:"removed"`
+	Published    time.Time `json:"published"`
+	Updated      time.Time `json:"updated,omitempty"`
+	Deleted      bool      `json:"deleted"`
+	Path         string    `json:"path"`
+	Distinguished bool     `json:"distinguished"`
+	LanguageID   int       `json:"language_id"`
+	Local        bool      `json:"local"`
+}
+
+// CommentAggregates represents comment statistics
+type CommentAggregates struct {
+	ID         int64     `json:"id"`
+	CommentID  int64     `json:"comment_id"`
+	Score      int       `json:"score"`
+	Upvotes    int       `json:"upvotes"`
+	Downvotes  int       `json:"downvotes"`
+	Published  time.Time `json:"published"`
+	ChildCount int       `json:"child_count"`
+}
+
+// CommentView represents a comment with all associated data from the API
+type CommentView struct {
+	Comment                     Comment           `json:"comment"`
+	Creator                     Person            `json:"creator"`
+	Post                        Post              `json:"post"`
+	Community                   Community         `json:"community"`
+	Counts                      CommentAggregates `json:"counts"`
+	CreatorBannedFromCommunity  bool              `json:"creator_banned_from_community"`
+	BannedFromCommunity         bool              `json:"banned_from_community"`
+	CreatorIsModerator          bool              `json:"creator_is_moderator"`
+	CreatorIsAdmin              bool              `json:"creator_is_admin"`
+	Subscribed                  string            `json:"subscribed"`
+	Saved                       bool              `json:"saved"`
+	CreatorBlocked              bool              `json:"creator_blocked"`
+	MyVote                      int               `json:"my_vote,omitempty"`
+}
+
+// GetCommentsResponse represents the API response for getting comments
+type GetCommentsResponse struct {
+	Comments []CommentView `json:"comments"`
+}

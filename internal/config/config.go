@@ -15,6 +15,7 @@ type Config struct {
 	Database   DatabaseConfig   `yaml:"database"`
 	Scraper    ScraperConfig    `yaml:"scraper"`
 	RunMode    RunModeConfig    `yaml:"run_mode"`
+	WebServer  WebServerConfig  `yaml:"web_server"`
 }
 
 // LemmyConfig contains Lemmy instance and authentication settings
@@ -52,6 +53,13 @@ type ScraperConfig struct {
 type RunModeConfig struct {
 	Mode     string        `yaml:"mode"`      // "once" or "continuous"
 	Interval time.Duration `yaml:"interval"`  // Interval for continuous mode (e.g., "5m", "1h")
+}
+
+// WebServerConfig contains web UI server settings
+type WebServerConfig struct {
+	Enabled bool   `yaml:"enabled"`  // Enable web UI server
+	Host    string `yaml:"host"`     // Host to bind to (e.g., "localhost", "0.0.0.0")
+	Port    int    `yaml:"port"`     // Port to listen on
 }
 
 // LoadConfig loads configuration from a YAML file
@@ -129,6 +137,14 @@ func (c *Config) SetDefaults() {
 	}
 	if c.RunMode.Mode == "" {
 		c.RunMode.Mode = "once"
+	}
+
+	// Web server defaults
+	if c.WebServer.Port == 0 {
+		c.WebServer.Port = 8080
+	}
+	if c.WebServer.Host == "" {
+		c.WebServer.Host = "localhost"
 	}
 }
 
